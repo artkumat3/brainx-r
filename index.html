@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BrainX - Redeem Credits</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .ad-container {
@@ -34,6 +34,21 @@
             background: linear-gradient(135deg, #4F46E5, #7C3AED);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+        }
+        .gplinks-ad {
+            background: linear-gradient(135deg, #FF6B6B, #FFA500);
+        }
+        .progress-bar {
+            height: 6px;
+            background-color: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4F46E5, #7C3AED);
+            width: 0%;
+            transition: width 0.3s ease;
         }
     </style>
 </head>
@@ -65,7 +80,7 @@
             <!-- Welcome Card -->
             <div class="bg-white rounded-xl shadow-md p-6 mb-8">
                 <h2 class="text-2xl font-bold text-gray-800 mb-2">Redeem Your BrainX Credits</h2>
-                <p class="text-gray-600 mb-4">Watch an ad to generate a unique code that gives you 15 credits. You can generate 1 code every 24 hours.</p>
+                <p class="text-gray-600 mb-4">Complete the ad to generate a unique code that gives you 15 credits. You can generate 1 code every 24 hours.</p>
                 
                 <div class="flex items-center space-x-2 text-sm text-gray-500">
                     <i class="fas fa-shield-alt text-green-500"></i>
@@ -73,31 +88,46 @@
                 </div>
             </div>
 
-            <!-- Ad Container -->
-            <div class="ad-container p-6 mb-8 text-white">
+            <!-- GPlinks Ad Container -->
+            <div id="gplinksAd" class="gplinks-ad rounded-xl shadow-md p-6 mb-8 text-white">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-bold">Watch Ad to Unlock Code</h3>
-                    <span class="bg-white text-purple-700 px-3 py-1 rounded-full text-sm font-bold">Sponsored</span>
+                    <h3 class="text-xl font-bold">Complete Ad to Unlock Code</h3>
+                    <span class="bg-white text-orange-600 px-3 py-1 rounded-full text-sm font-bold">GPlinks Ad</span>
                 </div>
                 
-                <div class="bg-black bg-opacity-20 rounded-lg p-4 mb-4">
-                    <div class="flex justify-center items-center h-40 bg-black bg-opacity-30 rounded">
-                        <div class="text-center">
-                            <i class="fas fa-play-circle text-4xl mb-2"></i>
-                            <p>Advertisement Video</p>
-                            <p class="text-sm mt-2">Duration: 30 seconds</p>
+                <div class="bg-white bg-opacity-20 rounded-lg p-4 mb-4">
+                    <div class="flex flex-col items-center justify-center h-40">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-link text-4xl mb-2"></i>
+                            <p class="font-bold">GPlinks URL Shortener</p>
+                            <p class="text-sm mt-2">Complete the ad to generate your code</p>
+                        </div>
+                        <div class="progress-bar w-full">
+                            <div class="progress-fill" id="adProgress"></div>
                         </div>
                     </div>
                 </div>
                 
                 <div class="flex justify-between items-center">
                     <div>
-                        <p class="text-sm">Complete the ad to generate your redeem code</p>
+                        <p class="text-sm">Visit the sponsored link to complete the ad</p>
                     </div>
-                    <button id="watchAdBtn" class="bg-white text-purple-700 px-6 py-2 rounded-lg font-bold hover:bg-gray-100 transition duration-300 pulse">
-                        Watch Ad
+                    <button id="startAdBtn" class="bg-white text-orange-600 px-6 py-2 rounded-lg font-bold hover:bg-gray-100 transition duration-300 pulse">
+                        Start Ad
                     </button>
                 </div>
+            </div>
+
+            <!-- Ad Completion Section -->
+            <div id="adCompletion" class="bg-white rounded-xl shadow-md p-6 mb-8 hidden">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Ad Completed Successfully!</h3>
+                <div class="flex items-center justify-center mb-4 text-green-500">
+                    <i class="fas fa-check-circle text-5xl"></i>
+                </div>
+                <p class="text-center text-gray-600 mb-4">Thank you for completing the ad. Your redemption code has been generated.</p>
+                <button id="generateCodeBtn" class="w-full bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700 transition duration-300">
+                    Generate Redemption Code
+                </button>
             </div>
 
             <!-- Code Display -->
@@ -106,10 +136,15 @@
                 <div class="code-display p-4 rounded-lg text-center mb-4">
                     <p id="generatedCode" class="text-2xl font-bold text-gray-800">XXXX-XXXX-XXXX</p>
                 </div>
-                <div class="flex justify-between items-center">
-                    <p class="text-gray-600">This code gives you <span class="font-bold">15 credits</span></p>
-                    <button id="copyCodeBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition duration-300">
-                        <i class="fas fa-copy mr-2"></i>Copy Code
+                <div class="flex flex-col space-y-4">
+                    <div class="flex justify-between items-center">
+                        <p class="text-gray-600">This code gives you <span class="font-bold">15 credits</span></p>
+                        <button id="copyCodeBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition duration-300">
+                            <i class="fas fa-copy mr-2"></i>Copy Code
+                        </button>
+                    </div>
+                    <button id="redirectBtn" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition duration-300">
+                        <i class="fas fa-external-link-alt mr-2"></i>Redeem on BrainX
                     </button>
                 </div>
             </div>
@@ -125,12 +160,12 @@
 
             <!-- Instructions -->
             <div class="bg-white rounded-xl shadow-md p-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-4">How to Redeem</h3>
+                <h3 class="text-xl font-bold text-gray-800 mb-4">How It Works</h3>
                 <ol class="list-decimal pl-5 space-y-3 text-gray-700">
-                    <li>Click "Watch Ad" button and complete the advertisement</li>
-                    <li>Your unique redemption code will be generated</li>
-                    <li>Copy the code and redeem it on the BrainX platform</li>
-                    <li>You'll receive 15 credits immediately</li>
+                    <li>Click "Start Ad" to open a GPlinks URL shortener ad</li>
+                    <li>Complete the ad by visiting the sponsored link</li>
+                    <li>Return to this page and click "Generate Redemption Code"</li>
+                    <li>Copy your code or click "Redeem on BrainX" to claim your 15 credits</li>
                     <li>You can generate a new code every 24 hours</li>
                 </ol>
             </div>
@@ -141,28 +176,75 @@
     <footer class="bg-gray-800 text-white py-6 mt-12">
         <div class="container mx-auto px-4 text-center">
             <p>&copy; 2023 BrainX. All rights reserved.</p>
-            <p class="text-gray-400 text-sm mt-2">This is a verified system for generating redemption codes.</p>
+            <p class="text-gray-400 text-sm mt-2">This system uses GPlinks URL shortener for ad verification.</p>
         </div>
     </footer>
+
+    <!-- GPlinks Ad Modal -->
+    <div id="gplinksModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">Complete Ad to Continue</h3>
+                    <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="bg-gray-100 rounded-lg p-4 mb-4 text-center">
+                    <i class="fas fa-external-link-alt text-4xl text-indigo-600 mb-2"></i>
+                    <p class="font-bold text-gray-800">GPlinks Advertisement</p>
+                    <p class="text-sm text-gray-600 mt-2">You will be redirected to a sponsored link</p>
+                </div>
+                <div class="progress-bar w-full mb-4">
+                    <div class="progress-fill" id="modalProgress"></div>
+                </div>
+                <p class="text-sm text-gray-600 mb-4 text-center">Please wait while we prepare your ad...</p>
+                <div class="flex space-x-3">
+                    <button id="cancelAd" class="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-400 transition duration-300">
+                        Cancel
+                    </button>
+                    <button id="continueAd" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition duration-300">
+                        Continue
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
         // API Configuration
         const API_BASE_URL = 'https://app.base44.com/api/apps/68cbebefa029f14aca657882/entities/RedemptionCode';
         const API_KEY = 'a59ffe885a234413baaa0ff678844bc5';
+        const BRAINX_CLAIM_URL = 'https://brainx.base44.app/claim-credit';
 
         // DOM Elements
-        const watchAdBtn = document.getElementById('watchAdBtn');
+        const startAdBtn = document.getElementById('startAdBtn');
+        const generateCodeBtn = document.getElementById('generateCodeBtn');
         const codeSection = document.getElementById('codeSection');
         const countdownSection = document.getElementById('countdownSection');
         const generatedCode = document.getElementById('generatedCode');
         const copyCodeBtn = document.getElementById('copyCodeBtn');
+        const redirectBtn = document.getElementById('redirectBtn');
         const countdownTimer = document.getElementById('countdownTimer');
         const creditBalance = document.getElementById('creditBalance');
+        const gplinksAd = document.getElementById('gplinksAd');
+        const adCompletion = document.getElementById('adCompletion');
+        const gplinksModal = document.getElementById('gplinksModal');
+        const closeModal = document.getElementById('closeModal');
+        const cancelAd = document.getElementById('cancelAd');
+        const continueAd = document.getElementById('continueAd');
+        const adProgress = document.getElementById('adProgress');
+        const modalProgress = document.getElementById('modalProgress');
 
         // State variables
         let countdownInterval;
         let lastCodeGenerationTime = localStorage.getItem('lastCodeGenerationTime');
         let userCredits = parseInt(localStorage.getItem('userCredits')) || 0;
+        let currentRedemptionCode = '';
+        let adCompleted = false;
+
+        // GPlinks URL - This would be your actual GPlinks URL
+        const GPLINKS_URL = 'https://gplinks.co/RM0dc';
 
         // Initialize the page
         document.addEventListener('DOMContentLoaded', function() {
@@ -177,12 +259,62 @@
                     // Show countdown timer
                     const timeRemaining = twentyFourHours - timeSinceLastCode;
                     startCountdown(timeRemaining);
+                    // Hide the ad section if user can't generate a code yet
+                    gplinksAd.classList.add('hidden');
                 }
+            }
+
+            // Check if user has already completed an ad in this session
+            if (localStorage.getItem('adCompleted') === 'true') {
+                adCompleted = true;
+                gplinksAd.classList.add('hidden');
+                adCompletion.classList.remove('hidden');
             }
         });
 
-        // Watch Ad Button Handler
-        watchAdBtn.addEventListener('click', function() {
+        // Start Ad Button Handler
+        startAdBtn.addEventListener('click', function() {
+            // Show the GPlinks modal
+            gplinksModal.classList.remove('hidden');
+            
+            // Simulate ad loading progress
+            simulateAdLoading();
+        });
+
+        // Close Modal Button
+        closeModal.addEventListener('click', function() {
+            gplinksModal.classList.add('hidden');
+        });
+
+        // Cancel Ad Button
+        cancelAd.addEventListener('click', function() {
+            gplinksModal.classList.add('hidden');
+        });
+
+        // Continue Ad Button
+        continueAd.addEventListener('click', function() {
+            // Redirect to GPlinks URL
+            window.open(GPLINKS_URL, '_blank');
+            
+            // Mark ad as completed
+            adCompleted = true;
+            localStorage.setItem('adCompleted', 'true');
+            
+            // Close modal
+            gplinksModal.classList.add('hidden');
+            
+            // Show completion section
+            gplinksAd.classList.add('hidden');
+            adCompletion.classList.remove('hidden');
+        });
+
+        // Generate Code Button Handler
+        generateCodeBtn.addEventListener('click', function() {
+            if (!adCompleted) {
+                alert('Please complete the ad first before generating a code.');
+                return;
+            }
+            
             // Check if user can generate a new code
             if (lastCodeGenerationTime) {
                 const timeSinceLastCode = Date.now() - parseInt(lastCodeGenerationTime);
@@ -194,8 +326,11 @@
                 }
             }
             
-            // Simulate watching an ad
-            simulateAd();
+            // Generate redemption code
+            generateRedemptionCode();
+            
+            // Hide completion section and show code section
+            adCompletion.classList.add('hidden');
         });
 
         // Copy Code Button Handler
@@ -211,30 +346,36 @@
             });
         });
 
-        // Simulate watching an ad
-        function simulateAd() {
-            // Disable the button during ad
-            watchAdBtn.disabled = true;
-            watchAdBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Playing Ad...';
-            
-            // Simulate ad duration (5 seconds for demo purposes)
-            setTimeout(function() {
-                // Generate redemption code
-                generateRedemptionCode();
+        // Redirect to BrainX Button Handler
+        redirectBtn.addEventListener('click', function() {
+            if (currentRedemptionCode) {
+                // Redirect to BrainX claim page with the code
+                window.location.href = `${BRAINX_CLAIM_URL}?code=${currentRedemptionCode}`;
+            }
+        });
+
+        // Simulate ad loading progress
+        function simulateAdLoading() {
+            let progress = 0;
+            const interval = setInterval(function() {
+                progress += 5;
+                adProgress.style.width = `${progress}%`;
+                modalProgress.style.width = `${progress}%`;
                 
-                // Re-enable button
-                watchAdBtn.disabled = false;
-                watchAdBtn.innerHTML = 'Watch Ad';
-            }, 5000);
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    continueAd.disabled = false;
+                }
+            }, 200);
         }
 
         // Generate redemption code
         function generateRedemptionCode() {
             // Create a unique code
-            const code = 'BX-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+            currentRedemptionCode = 'BX-' + Math.random().toString(36).substring(2, 10).toUpperCase();
             
             // Display the code
-            generatedCode.textContent = code;
+            generatedCode.textContent = currentRedemptionCode;
             codeSection.classList.remove('hidden');
             
             // Update last code generation time
@@ -249,8 +390,12 @@
             localStorage.setItem('userCredits', userCredits);
             updateCreditBalance();
             
+            // Reset ad completion status
+            adCompleted = false;
+            localStorage.removeItem('adCompleted');
+            
             // Create redemption code entity in the database
-            createRedemptionCodeEntity(code);
+            createRedemptionCodeEntity(currentRedemptionCode);
         }
 
         // Create redemption code entity in the database
@@ -264,7 +409,7 @@
                 is_used: false,
                 expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Expires in 7 days
                 created_by: "brainx_ad_system",
-                description: "Code generated by watching an ad on BrainX"
+                description: "Code generated by completing GPlinks ad on BrainX"
             };
             
             try {
@@ -311,6 +456,8 @@
                 if (timer < 0) {
                     clearInterval(countdownInterval);
                     countdownSection.classList.add('hidden');
+                    // Show the ad section again when timer expires
+                    gplinksAd.classList.remove('hidden');
                 }
             }, 1000);
         }
