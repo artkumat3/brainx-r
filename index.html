@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrainX - Redeem Credits</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .ad-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .code-display {
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+            background-color: #f8f9fa;
+        }
+        .countdown {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .brainx-logo {
+            background: linear-gradient(135deg, #4F46E5, #7C3AED);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <div class="w-10 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full flex items-center justify-center">
+                    <span class="text-white font-bold">BX</span>
+                </div>
+                <h1 class="text-xl font-bold brainx-logo">BrainX</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="text-right">
+                    <p class="text-sm text-gray-600">Your Credits</p>
+                    <p class="text-lg font-bold text-indigo-600" id="creditBalance">0</p>
+                </div>
+                <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user text-gray-600"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <div class="max-w-2xl mx-auto">
+            <!-- Welcome Card -->
+            <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Redeem Your BrainX Credits</h2>
+                <p class="text-gray-600 mb-4">Watch an ad to generate a unique code that gives you 15 credits. You can generate 1 code every 24 hours.</p>
+                
+                <div class="flex items-center space-x-2 text-sm text-gray-500">
+                    <i class="fas fa-shield-alt text-green-500"></i>
+                    <span>Verified Link: https://brainx-r.vercel.app/?ads_verified</span>
+                </div>
+            </div>
+
+            <!-- Ad Container -->
+            <div class="ad-container p-6 mb-8 text-white">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">Watch Ad to Unlock Code</h3>
+                    <span class="bg-white text-purple-700 px-3 py-1 rounded-full text-sm font-bold">Sponsored</span>
+                </div>
+                
+                <div class="bg-black bg-opacity-20 rounded-lg p-4 mb-4">
+                    <div class="flex justify-center items-center h-40 bg-black bg-opacity-30 rounded">
+                        <div class="text-center">
+                            <i class="fas fa-play-circle text-4xl mb-2"></i>
+                            <p>Advertisement Video</p>
+                            <p class="text-sm mt-2">Duration: 30 seconds</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm">Complete the ad to generate your redeem code</p>
+                    </div>
+                    <button id="watchAdBtn" class="bg-white text-purple-700 px-6 py-2 rounded-lg font-bold hover:bg-gray-100 transition duration-300 pulse">
+                        Watch Ad
+                    </button>
+                </div>
+            </div>
+
+            <!-- Code Display -->
+            <div id="codeSection" class="bg-white rounded-xl shadow-md p-6 mb-8 hidden">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Your Redemption Code</h3>
+                <div class="code-display p-4 rounded-lg text-center mb-4">
+                    <p id="generatedCode" class="text-2xl font-bold text-gray-800">XXXX-XXXX-XXXX</p>
+                </div>
+                <div class="flex justify-between items-center">
+                    <p class="text-gray-600">This code gives you <span class="font-bold">15 credits</span></p>
+                    <button id="copyCodeBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition duration-300">
+                        <i class="fas fa-copy mr-2"></i>Copy Code
+                    </button>
+                </div>
+            </div>
+
+            <!-- Countdown Timer -->
+            <div id="countdownSection" class="bg-white rounded-xl shadow-md p-6 mb-8 hidden">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Next Code Available In</h3>
+                <div class="countdown text-center text-indigo-600" id="countdownTimer">
+                    24:00:00
+                </div>
+                <p class="text-center text-gray-600 mt-2">You can generate your next code after this timer expires</p>
+            </div>
+
+            <!-- Instructions -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">How to Redeem</h3>
+                <ol class="list-decimal pl-5 space-y-3 text-gray-700">
+                    <li>Click "Watch Ad" button and complete the advertisement</li>
+                    <li>Your unique redemption code will be generated</li>
+                    <li>Copy the code and redeem it on the BrainX platform</li>
+                    <li>You'll receive 15 credits immediately</li>
+                    <li>You can generate a new code every 24 hours</li>
+                </ol>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-6 mt-12">
+        <div class="container mx-auto px-4 text-center">
+            <p>&copy; 2023 BrainX. All rights reserved.</p>
+            <p class="text-gray-400 text-sm mt-2">This is a verified system for generating redemption codes.</p>
+        </div>
+    </footer>
+
+    <script>
+        // API Configuration
+        const API_BASE_URL = 'https://app.base44.com/api/apps/68cbebefa029f14aca657882/entities/RedemptionCode';
+        const API_KEY = 'a59ffe885a234413baaa0ff678844bc5';
+
+        // DOM Elements
+        const watchAdBtn = document.getElementById('watchAdBtn');
+        const codeSection = document.getElementById('codeSection');
+        const countdownSection = document.getElementById('countdownSection');
+        const generatedCode = document.getElementById('generatedCode');
+        const copyCodeBtn = document.getElementById('copyCodeBtn');
+        const countdownTimer = document.getElementById('countdownTimer');
+        const creditBalance = document.getElementById('creditBalance');
+
+        // State variables
+        let countdownInterval;
+        let lastCodeGenerationTime = localStorage.getItem('lastCodeGenerationTime');
+        let userCredits = parseInt(localStorage.getItem('userCredits')) || 0;
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCreditBalance();
+            
+            // Check if user has generated a code recently
+            if (lastCodeGenerationTime) {
+                const timeSinceLastCode = Date.now() - parseInt(lastCodeGenerationTime);
+                const twentyFourHours = 24 * 60 * 60 * 1000;
+                
+                if (timeSinceLastCode < twentyFourHours) {
+                    // Show countdown timer
+                    const timeRemaining = twentyFourHours - timeSinceLastCode;
+                    startCountdown(timeRemaining);
+                }
+            }
+        });
+
+        // Watch Ad Button Handler
+        watchAdBtn.addEventListener('click', function() {
+            // Check if user can generate a new code
+            if (lastCodeGenerationTime) {
+                const timeSinceLastCode = Date.now() - parseInt(lastCodeGenerationTime);
+                const twentyFourHours = 24 * 60 * 60 * 1000;
+                
+                if (timeSinceLastCode < twentyFourHours) {
+                    alert('You can only generate one code every 24 hours. Please wait until the timer expires.');
+                    return;
+                }
+            }
+            
+            // Simulate watching an ad
+            simulateAd();
+        });
+
+        // Copy Code Button Handler
+        copyCodeBtn.addEventListener('click', function() {
+            const codeText = generatedCode.textContent;
+            navigator.clipboard.writeText(codeText).then(function() {
+                // Change button text temporarily
+                const originalText = copyCodeBtn.innerHTML;
+                copyCodeBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Copied!';
+                setTimeout(function() {
+                    copyCodeBtn.innerHTML = originalText;
+                }, 2000);
+            });
+        });
+
+        // Simulate watching an ad
+        function simulateAd() {
+            // Disable the button during ad
+            watchAdBtn.disabled = true;
+            watchAdBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Playing Ad...';
+            
+            // Simulate ad duration (5 seconds for demo purposes)
+            setTimeout(function() {
+                // Generate redemption code
+                generateRedemptionCode();
+                
+                // Re-enable button
+                watchAdBtn.disabled = false;
+                watchAdBtn.innerHTML = 'Watch Ad';
+            }, 5000);
+        }
+
+        // Generate redemption code
+        function generateRedemptionCode() {
+            // Create a unique code
+            const code = 'BX-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+            
+            // Display the code
+            generatedCode.textContent = code;
+            codeSection.classList.remove('hidden');
+            
+            // Update last code generation time
+            lastCodeGenerationTime = Date.now();
+            localStorage.setItem('lastCodeGenerationTime', lastCodeGenerationTime);
+            
+            // Start countdown timer
+            startCountdown(24 * 60 * 60 * 1000);
+            
+            // Add credits to user account
+            userCredits += 15;
+            localStorage.setItem('userCredits', userCredits);
+            updateCreditBalance();
+            
+            // Create redemption code entity in the database
+            createRedemptionCodeEntity(code);
+        }
+
+        // Create redemption code entity in the database
+        async function createRedemptionCodeEntity(code) {
+            const entityData = {
+                code: code,
+                credits: 15,
+                code_type: "ad_generated",
+                max_uses: 1,
+                current_uses: 0,
+                is_used: false,
+                expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Expires in 7 days
+                created_by: "brainx_ad_system",
+                description: "Code generated by watching an ad on BrainX"
+            };
+            
+            try {
+                const response = await fetch(API_BASE_URL, {
+                    method: 'POST',
+                    headers: {
+                        'api_key': API_KEY,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(entityData)
+                });
+                
+                if (response.ok) {
+                    console.log('Redemption code created successfully');
+                } else {
+                    console.error('Failed to create redemption code');
+                }
+            } catch (error) {
+                console.error('Error creating redemption code:', error);
+            }
+        }
+
+        // Start countdown timer
+        function startCountdown(duration) {
+            countdownSection.classList.remove('hidden');
+            
+            // Clear any existing interval
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            let timer = duration;
+            
+            countdownInterval = setInterval(function() {
+                const hours = Math.floor(timer / (1000 * 60 * 60));
+                const minutes = Math.floor((timer % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timer % (1000 * 60)) / 1000);
+                
+                countdownTimer.textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                timer -= 1000;
+                
+                if (timer < 0) {
+                    clearInterval(countdownInterval);
+                    countdownSection.classList.add('hidden');
+                }
+            }, 1000);
+        }
+
+        // Update credit balance display
+        function updateCreditBalance() {
+            creditBalance.textContent = userCredits;
+        }
+
+        // Fetch redemption code entities (for admin purposes)
+        async function fetchRedemptionCodeEntities() {
+            try {
+                const response = await fetch(API_BASE_URL, {
+                    headers: {
+                        'api_key': API_KEY,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                console.log('Redemption code entities:', data);
+                return data;
+            } catch (error) {
+                console.error('Error fetching redemption code entities:', error);
+            }
+        }
+
+        // Update redemption code entity
+        async function updateRedemptionCodeEntity(entityId, updateData) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/${entityId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'api_key': API_KEY,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+                const data = await response.json();
+                console.log('Updated redemption code entity:', data);
+                return data;
+            } catch (error) {
+                console.error('Error updating redemption code entity:', error);
+            }
+        }
+    </script>
+</body>
+</html>
