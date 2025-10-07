@@ -91,6 +91,16 @@
       background: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%);
       transition: width 0.3s ease;
     }
+    
+    .shake {
+      animation: shake 0.5s ease-in-out;
+    }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
   </style>
 </head>
 <body class="min-h-screen flex items-center justify-center px-4 py-10">
@@ -101,21 +111,6 @@
       </div>
       <h1 class="text-3xl font-bold gradient-text">BrainX</h1>
       <p class="text-gray-500 mt-2">Generate a 15-credit code valid for 1 hour</p>
-    </div>
-
-    <div class="bg-blue-50 rounded-lg p-4 mb-6">
-      <div class="flex items-start">
-        <div class="flex-shrink-0 mt-1">
-          <i class="fas fa-info-circle text-blue-500"></i>
-        </div>
-        <div class="ml-3">
-          <h3 class="text-sm font-medium text-blue-800">How it works</h3>
-          <div class="mt-1 text-sm text-blue-700">
-            <p>Complete the ad verification to generate a unique code that gives you 15 credits to use on BrainX.</p>
-            <p class="mt-2"><strong>Note:</strong> You can only generate one code every 6 hours.</p>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- Initial State - Ad Verification Required -->
@@ -129,6 +124,7 @@
             <h3 class="text-sm font-medium text-yellow-800">Ad Verification Required</h3>
             <div class="mt-1 text-sm text-yellow-700">
               <p>You must complete the ad verification to generate a code.</p>
+              <p class="mt-2"><strong>Note:</strong> You can only generate one code per device.</p>
             </div>
           </div>
         </div>
@@ -152,6 +148,7 @@
             <h3 class="text-sm font-medium text-green-800">Ad Verification Complete</h3>
             <div class="mt-1 text-sm text-green-700">
               <p>You can now generate your credit code.</p>
+              <p class="mt-1 font-semibold">This is a one-time use only!</p>
             </div>
           </div>
         </div>
@@ -164,32 +161,6 @@
           Generate Code
         </button>
       </form>
-    </div>
-
-    <!-- Cooldown State -->
-    <div id="cooldownState" class="space-y-5 hidden">
-      <div class="bg-purple-50 rounded-lg p-4">
-        <div class="flex items-start">
-          <div class="flex-shrink-0 mt-1">
-            <i class="fas fa-clock text-purple-500"></i>
-          </div>
-          <div class="ml-3">
-            <h3 class="text-sm font-medium text-purple-800">Code Generation on Cooldown</h3>
-            <div class="mt-1 text-sm text-purple-700">
-              <p>You can generate another code in:</p>
-              <p id="countdownTimer" class="countdown text-lg mt-2">06:00:00</p>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="progress-bar">
-        <div id="cooldownProgress" class="progress-fill" style="width: 0%"></div>
-      </div>
-      
-      <p class="text-center text-sm text-gray-500">
-        You can only generate one code every 6 hours.
-      </p>
     </div>
 
     <!-- Code Display Section -->
@@ -215,6 +186,39 @@
       </div>
     </div>
 
+    <!-- Already Generated State -->
+    <div id="alreadyGeneratedState" class="space-y-5 hidden">
+      <div class="bg-purple-50 rounded-lg p-4">
+        <div class="flex items-start">
+          <div class="flex-shrink-0 mt-1">
+            <i class="fas fa-check-circle text-purple-500"></i>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-purple-800">Code Already Generated</h3>
+            <div class="mt-1 text-sm text-purple-700">
+              <p>You have already generated your one-time code.</p>
+              <p class="mt-1">Here is your code:</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="code-display rounded-lg p-4 text-center">
+        <span id="existingCode" class="text-xl font-bold text-gray-800"></span>
+      </div>
+      
+      <div class="flex space-x-3">
+        <button id="copyExistingBtn" class="btn-copy flex-1 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-all flex items-center justify-center">
+          <i class="far fa-copy mr-2"></i>
+          Copy Code
+        </button>
+        <button id="redirectExistingBtn" class="btn-redirect flex-1 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-medium rounded-lg hover:from-green-600 hover:to-green-700 transition-all flex items-center justify-center">
+          <i class="fas fa-external-link-alt mr-2"></i>
+          Use Now
+        </button>
+      </div>
+    </div>
+
     <div id="status" class="mt-6 text-center hidden fade-in">
       <div class="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium">
         <i id="statusIcon" class="mr-2"></i>
@@ -234,7 +238,7 @@
         </div>
         <div class="flex items-center">
           <i class="fas fa-user mr-1"></i>
-          <span>1 Use</span>
+          <span>1 Use Only</span>
         </div>
       </div>
     </div>
@@ -243,78 +247,90 @@
   <script>
     let generatedCode = '';
     let redirectUrl = '';
-    let cooldownInterval = null;
-    const COOLDOWN_TIME = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+    let adVerified = false;
 
-    // Check if user is on cooldown when page loads
+    // Check user state when page loads
     document.addEventListener('DOMContentLoaded', function() {
-      const lastGenerated = localStorage.getItem('lastCodeGenerated');
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasCodeGenerated = localStorage.getItem('codeGenerated') === 'true';
+      const existingCode = localStorage.getItem('generatedCode');
       
-      if (lastGenerated) {
-        const timeSinceLast = Date.now() - parseInt(lastGenerated);
-        
-        if (timeSinceLast < COOLDOWN_TIME) {
-          // User is on cooldown
-          showCooldownState(COOLDOWN_TIME - timeSinceLast);
-        } else {
-          // Cooldown expired
-          localStorage.removeItem('lastCodeGenerated');
-          localStorage.removeItem('adsVerified');
-        }
+      // Check if user has already generated a code
+      if (hasCodeGenerated && existingCode) {
+        showAlreadyGeneratedState(existingCode);
+        return;
       }
       
-      // Check if user has completed ad verification
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has('ads_verified')) {
-        localStorage.setItem('adsVerified', 'true');
-        document.getElementById('initialState').classList.add('hidden');
-        document.getElementById('generateSection').classList.remove('hidden');
-      } else if (localStorage.getItem('adsVerified') === 'true') {
+      // Check if user is returning from ad verification
+      if (urlParams.has('ads_verified') && !hasCodeGenerated) {
+        // Verify this is a legitimate redirect (not direct URL access)
+        if (document.referrer && document.referrer.includes('https://earn4link.in')) {
+          adVerified = true;
+          localStorage.setItem('adsVerified', 'true');
+          document.getElementById('initialState').classList.add('hidden');
+          document.getElementById('generateSection').classList.remove('hidden');
+          
+          // Clean URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+          // Direct URL access detected - show error
+          showStatus('Direct URL access not allowed. Please complete ad verification properly.', 'error');
+          document.getElementById('verifyBtn').classList.add('shake');
+          setTimeout(() => {
+            document.getElementById('verifyBtn').classList.remove('shake');
+          }, 500);
+        }
+      } else if (localStorage.getItem('adsVerified') === 'true' && !hasCodeGenerated) {
+        // User has previously verified ads
+        adVerified = true;
         document.getElementById('initialState').classList.add('hidden');
         document.getElementById('generateSection').classList.remove('hidden');
       }
     });
 
-    // Show cooldown state with countdown
-    function showCooldownState(timeRemaining) {
+    // Show already generated state
+    function showAlreadyGeneratedState(code) {
       document.getElementById('initialState').classList.add('hidden');
       document.getElementById('generateSection').classList.add('hidden');
-      document.getElementById('cooldownState').classList.remove('hidden');
+      document.getElementById('codeSection').classList.add('hidden');
+      document.getElementById('alreadyGeneratedState').classList.remove('hidden');
       
-      updateCountdown(timeRemaining);
-      
-      // Start countdown timer
-      cooldownInterval = setInterval(() => {
-        timeRemaining -= 1000;
-        
-        if (timeRemaining <= 0) {
-          clearInterval(cooldownInterval);
-          localStorage.removeItem('lastCodeGenerated');
-          document.getElementById('cooldownState').classList.add('hidden');
-          document.getElementById('generateSection').classList.remove('hidden');
-        } else {
-          updateCountdown(timeRemaining);
-        }
-      }, 1000);
+      document.getElementById('existingCode').textContent = code;
+      redirectUrl = `https://brainx.base44.app/claim-credit?code=${encodeURIComponent(code)}`;
     }
-    
-    // Update countdown display
-    function updateCountdown(timeRemaining) {
-      const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
-      const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+
+    // Show status message
+    function showStatus(message, type = 'info') {
+      const status = document.getElementById("status");
+      const statusText = document.getElementById("statusText");
+      const statusIcon = document.getElementById("statusIcon");
       
-      document.getElementById('countdownTimer').textContent = 
-        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      statusText.textContent = message;
       
-      // Update progress bar
-      const progress = 100 - (timeRemaining / COOLDOWN_TIME * 100);
-      document.getElementById('cooldownProgress').style.width = `${progress}%`;
+      if (type === 'error') {
+        statusIcon.className = "fas fa-exclamation-circle mr-2 text-red-500";
+        status.className = "mt-6 text-center fade-in bg-red-50 rounded-lg py-3";
+      } else if (type === 'success') {
+        statusIcon.className = "fas fa-check-circle mr-2 text-green-500";
+        status.className = "mt-6 text-center fade-in bg-green-50 rounded-lg py-3";
+      } else {
+        statusIcon.className = "fas fa-info-circle mr-2 text-blue-500";
+        status.className = "mt-6 text-center fade-in bg-blue-50 rounded-lg py-3";
+      }
+      
+      status.classList.remove("hidden");
+      
+      // Auto hide after 5 seconds
+      setTimeout(() => {
+        status.classList.add("hidden");
+      }, 5000);
     }
 
     // Redirect to ad verification
     document.getElementById("verifyBtn").addEventListener("click", function() {
-      window.location.href = "https://gplinks.co/vZ5sULR4";
+      // Set a flag to track that user initiated the ad verification
+      localStorage.setItem('adVerificationStarted', 'true');
+      window.location.href = "https://earn4link.in/gTqLGmyzaz1M2f";
     });
 
     async function generateRedemptionCode() {
@@ -324,6 +340,12 @@
       const button = document.querySelector('#generateForm button[type="submit"]');
       const codeSection = document.getElementById("codeSection");
       const generatedCodeElement = document.getElementById("generatedCode");
+      
+      // Check if user has already generated a code
+      if (localStorage.getItem('codeGenerated') === 'true') {
+        showStatus('You have already generated your one-time code.', 'error');
+        return;
+      }
       
       // Disable button and show loading state
       button.disabled = true;
@@ -335,6 +357,7 @@
       statusIcon.className = "fas fa-spinner fa-spin mr-2 text-blue-500";
       status.className = "mt-6 text-center fade-in";
       
+      // Generate unique code
       generatedCode = 'RC-' + Math.random().toString(36).substring(2, 10).toUpperCase();
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
@@ -372,34 +395,25 @@
         // Set the redirect URL
         redirectUrl = `https://brainx.base44.app/claim-credit?code=${encodeURIComponent(result.code)}`;
         
-        // Set cooldown
-        localStorage.setItem('lastCodeGenerated', Date.now().toString());
+        // Mark code as generated in localStorage
+        localStorage.setItem('codeGenerated', 'true');
+        localStorage.setItem('generatedCode', generatedCode);
         
         // Show success state
-        statusText.textContent = "Code generated successfully!";
-        statusIcon.className = "fas fa-check-circle mr-2 text-green-500";
-        status.className = "mt-6 text-center fade-in bg-green-50 rounded-lg py-3";
+        showStatus('Code generated successfully!', 'success');
         
-        button.innerHTML = '<i class="fas fa-check mr-2"></i> Success!';
+        button.innerHTML = '<i class="fas fa-check mr-2"></i> Generated!';
+        button.classList.remove('bg-gradient-to-r', 'from-blue-600', 'to-indigo-600');
         button.classList.add('bg-gradient-to-r', 'from-green-500', 'to-green-600');
         
-        // Reset button after a delay
+        // Hide generate section after delay
         setTimeout(() => {
-          button.innerHTML = '<i class="fas fa-bolt mr-2"></i> Generate Another';
-          button.classList.remove('bg-gradient-to-r', 'from-green-500', 'to-green-600');
-          button.classList.add('bg-gradient-to-r', 'from-blue-600', 'to-indigo-600');
-          button.disabled = false;
-          button.classList.add('pulse');
-          
-          // Show cooldown state
-          showCooldownState(COOLDOWN_TIME);
+          document.getElementById('generateSection').classList.add('hidden');
         }, 2000);
 
       } catch (error) {
         // Show error state
-        statusText.textContent = "Error: " + error.message;
-        statusIcon.className = "fas fa-exclamation-circle mr-2 text-red-500";
-        status.className = "mt-6 text-center fade-in bg-red-50 rounded-lg py-3";
+        showStatus("Error: " + error.message, 'error');
         
         button.innerHTML = '<i class="fas fa-bolt mr-2"></i> Try Again';
         button.classList.remove('bg-gradient-to-r', 'from-green-500', 'to-green-600');
@@ -426,10 +440,39 @@
       });
     });
 
+    // Copy existing code to clipboard
+    document.getElementById("copyExistingBtn").addEventListener("click", function() {
+      const existingCode = localStorage.getItem('generatedCode');
+      if (existingCode) {
+        navigator.clipboard.writeText(existingCode).then(() => {
+          const copyBtn = document.getElementById("copyExistingBtn");
+          const originalText = copyBtn.innerHTML;
+          
+          copyBtn.innerHTML = '<i class="fas fa-check mr-2"></i> Copied!';
+          copyBtn.classList.remove('bg-gray-100', 'text-gray-700');
+          copyBtn.classList.add('bg-green-100', 'text-green-700');
+          
+          setTimeout(() => {
+            copyBtn.innerHTML = originalText;
+            copyBtn.classList.remove('bg-green-100', 'text-green-700');
+            copyBtn.classList.add('bg-gray-100', 'text-gray-700');
+          }, 2000);
+        });
+      }
+    });
+
     // Redirect to claim page
     document.getElementById("redirectBtn").addEventListener("click", function() {
       if (redirectUrl) {
         window.location.href = redirectUrl;
+      }
+    });
+
+    // Redirect to claim page for existing code
+    document.getElementById("redirectExistingBtn").addEventListener("click", function() {
+      const existingCode = localStorage.getItem('generatedCode');
+      if (existingCode) {
+        window.location.href = `https://brainx.base44.app/claim-credit?code=${encodeURIComponent(existingCode)}`;
       }
     });
 
