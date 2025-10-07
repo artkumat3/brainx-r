@@ -107,6 +107,10 @@
       font-weight: bold;
       color: #4F46E5;
     }
+    
+    .security-alert {
+      border-left: 4px solid #ef4444;
+    }
   </style>
 </head>
 <body class="min-h-screen flex items-center justify-center px-4 py-10">
@@ -117,6 +121,21 @@
       </div>
       <h1 class="text-3xl font-bold gradient-text">BrainX</h1>
       <p class="text-gray-500 mt-2">Generate a 15-credit code valid for 1 hour</p>
+    </div>
+
+    <!-- Security Alert -->
+    <div id="securityAlert" class="bg-red-50 security-alert rounded-lg p-4 mb-4 hidden">
+      <div class="flex items-start">
+        <div class="flex-shrink-0 mt-1">
+          <i class="fas fa-shield-alt text-red-500"></i>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-red-800">Security Alert</h3>
+          <div class="mt-1 text-sm text-red-700">
+            <p>Invalid verification attempt detected. Please complete the ad verification properly.</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Initial State - Ad Verification Required -->
@@ -141,6 +160,10 @@
         <i class="fas fa-external-link-alt mr-2"></i>
         Complete Ad Verification
       </button>
+      
+      <div class="text-center text-xs text-gray-500 mt-2">
+        <p>ⓘ Opens in new tab for security</p>
+      </div>
     </div>
 
     <!-- After Ad Verification - Generate Code -->
@@ -281,12 +304,23 @@
     let cooldownInterval = null;
     const COOLDOWN_TIME = 5 * 60 * 60 * 1000; // 5 hours in milliseconds
 
+    // Generate unique tab ID for security
+    const generateTabId = () => {
+      return 'tab_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+    };
+
+    // Initialize tab ID if not exists
+    if (!sessionStorage.getItem('tabId')) {
+      sessionStorage.setItem('tabId', generateTabId());
+    }
+
     // Check user state when page loads
     document.addEventListener('DOMContentLoaded', function() {
       const urlParams = new URLSearchParams(window.location.search);
       const hasCodeGenerated = localStorage.getItem('codeGenerated') === 'true';
       const existingCode = localStorage.getItem('generatedCode');
       const lastGeneratedTime = localStorage.getItem('lastGeneratedTime');
+      const currentTabId = sessionStorage.getItem('tabId');
       
       // Check if user is on cooldown
       if (lastGeneratedTime) {
@@ -299,7 +333,6 @@
         } else {
           // Cooldown expired, reset state
           localStorage.removeItem('lastGeneratedTime');
-          localStorage.removeItem('adsVerified');
         }
       }
       
@@ -309,14 +342,20 @@
         return;
       }
       
-      // SECURITY FIX: Check if user is returning from legitimate ad verification
+      // SECURITY FIX: Enhanced verification with tab-specific tracking
       if (urlParams.has('ads_verified') && !hasCodeGenerated) {
-        // Verify this is a legitimate redirect by checking session storage
-        const verificationStarted = sessionStorage.getItem('adVerificationStarted');
+        // Check if this is a legitimate verification from a different tab
+        const verificationTabId = sessionStorage.getItem('verificationTabId');
+        const adStarted = sessionStorage.getItem('adVerificationStarted');
         
-        if (verificationStarted === 'true') {
-          // Legitimate redirect - complete verification
+        // Legitimate verification requires:
+        // 1. Ad verification was started in this session
+        // 2. It came from a different tab (or new window)
+        // 3. Current tab doesn't have the same tab ID as verification
+        if (adStarted === 'true' && verificationTabId && verificationTabId !== currentTabId) {
+          // Legitimate cross-tab verification
           sessionStorage.removeItem('adVerificationStarted');
+          sessionStorage.removeItem('verificationTabId');
           localStorage.setItem('adsVerified', 'true');
           document.getElementById('initialState').classList.add('hidden');
           document.getElementById('generateSection').classList.remove('hidden');
@@ -325,12 +364,14 @@
           const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
           window.history.replaceState({}, document.title, cleanUrl);
         } else {
-          // Direct URL access detected - show error
-          showStatus('Direct URL access not allowed. Please complete ad verification properly.', 'error');
+          // Same-tab bypass attempt or invalid verification
+          showSecurityAlert();
+          document.getElementById('securityAlert').classList.remove('hidden');
           document.getElementById('verifyBtn').classList.add('shake');
-          setTimeout(() => {
-            document.getElementById('verifyBtn').classList.remove('shake');
-          }, 500);
+          
+          // Clean URL but show error state
+          const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
         }
       } else if (localStorage.getItem('adsVerified') === 'true' && !hasCodeGenerated) {
         // User has previously verified ads
@@ -339,11 +380,23 @@
       }
     });
 
+    // Show security alert
+    function showSecurityAlert() {
+      document.getElementById('initialState').classList.remove('hidden');
+      document.getElementById('generateSection').classList.add('hidden');
+      
+      // Auto-hide security alert after 8 seconds
+      setTimeout(() => {
+        document.getElementById('securityAlert').classList.add('hidden');
+      }, 8000);
+    }
+
     // Show cooldown state with countdown
     function showCooldownState(timeRemaining) {
       document.getElementById('initialState').classList.add('hidden');
       document.getElementById('generateSection').classList.add('hidden');
       document.getElementById('codeSection').classList.add('hidden');
+      document.getElementById('securityAlert').classList.add('hidden');
       document.getElementById('cooldownState').classList.remove('hidden');
       
       updateCountdown(timeRemaining);
@@ -389,6 +442,7 @@
       document.getElementById('generateSection').classList.add('hidden');
       document.getElementById('codeSection').classList.add('hidden');
       document.getElementById('cooldownState').classList.add('hidden');
+      document.getElementById('securityAlert').classList.add('hidden');
       document.getElementById('alreadyGeneratedState').classList.remove('hidden');
       
       document.getElementById('existingCode').textContent = code;
@@ -422,11 +476,28 @@
       }, 5000);
     }
 
-    // Redirect to ad verification
+    // Redirect to ad verification (opens in new tab)
     document.getElementById("verifyBtn").addEventListener("click", function() {
-      // Set session storage to track legitimate ad verification start
+      // Generate a unique verification tab ID
+      const verificationTabId = generateTabId();
+      
+      // Store verification state with tab ID
       sessionStorage.setItem('adVerificationStarted', 'true');
-      window.location.href = "https://earn4link.in/gTqLGmyzaz1M2f";
+      sessionStorage.setItem('verificationTabId', verificationTabId);
+      
+      // Open in new tab/window
+      const newWindow = window.open("https://earn4link.in/gTqLGmyzaz1M2f", "_blank");
+      
+      if (!newWindow) {
+        showStatus('Please allow popups for this site to complete verification.', 'error');
+        sessionStorage.removeItem('adVerificationStarted');
+        sessionStorage.removeItem('verificationTabId');
+      } else {
+        showStatus('Ad verification opened in new tab. Complete it and return here.', 'info');
+        
+        // Focus on current tab
+        window.focus();
+      }
     });
 
     async function generateRedemptionCode() {
