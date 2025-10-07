@@ -101,6 +101,12 @@
       25% { transform: translateX(-5px); }
       75% { transform: translateX(5px); }
     }
+    
+    .timer-display {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #4F46E5;
+    }
   </style>
 </head>
 <body class="min-h-screen flex items-center justify-center px-4 py-10">
@@ -124,7 +130,7 @@
             <h3 class="text-sm font-medium text-yellow-800">Ad Verification Required</h3>
             <div class="mt-1 text-sm text-yellow-700">
               <p>You must complete the ad verification to generate a code.</p>
-              <p class="mt-2"><strong>Note:</strong> You can only generate one code per device.</p>
+              <p class="mt-2"><strong>Note:</strong> You can generate one code every 5 hours.</p>
             </div>
           </div>
         </div>
@@ -148,7 +154,7 @@
             <h3 class="text-sm font-medium text-green-800">Ad Verification Complete</h3>
             <div class="mt-1 text-sm text-green-700">
               <p>You can now generate your credit code.</p>
-              <p class="mt-1 font-semibold">This is a one-time use only!</p>
+              <p class="mt-1 font-semibold">Next code available in 5 hours</p>
             </div>
           </div>
         </div>
@@ -186,18 +192,43 @@
       </div>
     </div>
 
-    <!-- Already Generated State -->
-    <div id="alreadyGeneratedState" class="space-y-5 hidden">
+    <!-- Cooldown State -->
+    <div id="cooldownState" class="space-y-5 hidden">
       <div class="bg-purple-50 rounded-lg p-4">
         <div class="flex items-start">
           <div class="flex-shrink-0 mt-1">
-            <i class="fas fa-check-circle text-purple-500"></i>
+            <i class="fas fa-clock text-purple-500"></i>
           </div>
           <div class="ml-3">
-            <h3 class="text-sm font-medium text-purple-800">Code Already Generated</h3>
+            <h3 class="text-sm font-medium text-purple-800">Next Code Available In</h3>
             <div class="mt-1 text-sm text-purple-700">
-              <p>You have already generated your one-time code.</p>
-              <p class="mt-1">Here is your code:</p>
+              <p>You can generate your next code in:</p>
+              <p id="countdownTimer" class="timer-display mt-2">05:00:00</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="progress-bar">
+        <div id="cooldownProgress" class="progress-fill" style="width: 0%"></div>
+      </div>
+      
+      <p class="text-center text-sm text-gray-500">
+        You can generate one code every 5 hours.
+      </p>
+    </div>
+
+    <!-- Already Generated State -->
+    <div id="alreadyGeneratedState" class="space-y-5 hidden">
+      <div class="bg-blue-50 rounded-lg p-4">
+        <div class="flex items-start">
+          <div class="flex-shrink-0 mt-1">
+            <i class="fas fa-check-circle text-blue-500"></i>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-blue-800">Your Current Code</h3>
+            <div class="mt-1 text-sm text-blue-700">
+              <p>Here is your active code:</p>
             </div>
           </div>
         </div>
@@ -238,7 +269,7 @@
         </div>
         <div class="flex items-center">
           <i class="fas fa-user mr-1"></i>
-          <span>1 Use Only</span>
+          <span>5 Hour Cooldown</span>
         </div>
       </div>
     </div>
@@ -247,44 +278,117 @@
   <script>
     let generatedCode = '';
     let redirectUrl = '';
-    let adVerified = false;
+    let cooldownInterval = null;
+    const COOLDOWN_TIME = 5 * 60 * 60 * 1000; // 5 hours in milliseconds
 
     // Check user state when page loads
     document.addEventListener('DOMContentLoaded', function() {
       const urlParams = new URLSearchParams(window.location.search);
       const hasCodeGenerated = localStorage.getItem('codeGenerated') === 'true';
       const existingCode = localStorage.getItem('generatedCode');
+      const lastGeneratedTime = localStorage.getItem('lastGeneratedTime');
       
-      // Check if user has already generated a code
+      // Check if user is on cooldown
+      if (lastGeneratedTime) {
+        const timeSinceLast = Date.now() - parseInt(lastGeneratedTime);
+        
+        if (timeSinceLast < COOLDOWN_TIME) {
+          // User is on cooldown
+          showCooldownState(COOLDOWN_TIME - timeSinceLast);
+          return;
+        } else {
+          // Cooldown expired, reset state
+          localStorage.removeItem('lastGeneratedTime');
+          localStorage.removeItem('adsVerified');
+        }
+      }
+      
+      // Check if user has already generated a code (but cooldown expired)
       if (hasCodeGenerated && existingCode) {
         showAlreadyGeneratedState(existingCode);
         return;
       }
       
-      // Check if user is returning from ad verification
+      // SECURITY FIX: Check if user is returning from legitimate ad verification
       if (urlParams.has('ads_verified') && !hasCodeGenerated) {
-        // Set ad verification as complete
-        adVerified = true;
-        localStorage.setItem('adsVerified', 'true');
-        document.getElementById('initialState').classList.add('hidden');
-        document.getElementById('generateSection').classList.remove('hidden');
+        // Verify this is a legitimate redirect by checking session storage
+        const verificationStarted = sessionStorage.getItem('adVerificationStarted');
         
-        // Clean URL - remove the ads_verified parameter
-        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
+        if (verificationStarted === 'true') {
+          // Legitimate redirect - complete verification
+          sessionStorage.removeItem('adVerificationStarted');
+          localStorage.setItem('adsVerified', 'true');
+          document.getElementById('initialState').classList.add('hidden');
+          document.getElementById('generateSection').classList.remove('hidden');
+          
+          // Clean URL
+          const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+        } else {
+          // Direct URL access detected - show error
+          showStatus('Direct URL access not allowed. Please complete ad verification properly.', 'error');
+          document.getElementById('verifyBtn').classList.add('shake');
+          setTimeout(() => {
+            document.getElementById('verifyBtn').classList.remove('shake');
+          }, 500);
+        }
       } else if (localStorage.getItem('adsVerified') === 'true' && !hasCodeGenerated) {
         // User has previously verified ads
-        adVerified = true;
         document.getElementById('initialState').classList.add('hidden');
         document.getElementById('generateSection').classList.remove('hidden');
       }
     });
+
+    // Show cooldown state with countdown
+    function showCooldownState(timeRemaining) {
+      document.getElementById('initialState').classList.add('hidden');
+      document.getElementById('generateSection').classList.add('hidden');
+      document.getElementById('codeSection').classList.add('hidden');
+      document.getElementById('cooldownState').classList.remove('hidden');
+      
+      updateCountdown(timeRemaining);
+      
+      // Start countdown timer
+      cooldownInterval = setInterval(() => {
+        timeRemaining -= 1000;
+        
+        if (timeRemaining <= 0) {
+          clearInterval(cooldownInterval);
+          localStorage.removeItem('lastGeneratedTime');
+          document.getElementById('cooldownState').classList.add('hidden');
+          
+          // Show generate section if user has ad verification
+          if (localStorage.getItem('adsVerified') === 'true') {
+            document.getElementById('generateSection').classList.remove('hidden');
+          } else {
+            document.getElementById('initialState').classList.remove('hidden');
+          }
+        } else {
+          updateCountdown(timeRemaining);
+        }
+      }, 1000);
+    }
+    
+    // Update countdown display
+    function updateCountdown(timeRemaining) {
+      const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+      const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+      
+      document.getElementById('countdownTimer').textContent = 
+        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      
+      // Update progress bar
+      const progress = 100 - (timeRemaining / COOLDOWN_TIME * 100);
+      document.getElementById('cooldownProgress').style.width = `${progress}%`;
+    }
 
     // Show already generated state
     function showAlreadyGeneratedState(code) {
       document.getElementById('initialState').classList.add('hidden');
       document.getElementById('generateSection').classList.add('hidden');
       document.getElementById('codeSection').classList.add('hidden');
+      document.getElementById('cooldownState').classList.add('hidden');
       document.getElementById('alreadyGeneratedState').classList.remove('hidden');
       
       document.getElementById('existingCode').textContent = code;
@@ -320,8 +424,8 @@
 
     // Redirect to ad verification
     document.getElementById("verifyBtn").addEventListener("click", function() {
-      // Set a flag to track that user initiated the ad verification
-      localStorage.setItem('adVerificationStarted', 'true');
+      // Set session storage to track legitimate ad verification start
+      sessionStorage.setItem('adVerificationStarted', 'true');
       window.location.href = "https://earn4link.in/gTqLGmyzaz1M2f";
     });
 
@@ -333,10 +437,14 @@
       const codeSection = document.getElementById("codeSection");
       const generatedCodeElement = document.getElementById("generatedCode");
       
-      // Check if user has already generated a code
-      if (localStorage.getItem('codeGenerated') === 'true') {
-        showStatus('You have already generated your one-time code.', 'error');
-        return;
+      // Check if user is on cooldown
+      const lastGeneratedTime = localStorage.getItem('lastGeneratedTime');
+      if (lastGeneratedTime) {
+        const timeSinceLast = Date.now() - parseInt(lastGeneratedTime);
+        if (timeSinceLast < COOLDOWN_TIME) {
+          showStatus(`Please wait ${formatTime(COOLDOWN_TIME - timeSinceLast)} before generating another code.`, 'error');
+          return;
+        }
       }
       
       // Disable button and show loading state
@@ -387,21 +495,24 @@
         // Set the redirect URL
         redirectUrl = `https://brainx.base44.app/claim-credit?code=${encodeURIComponent(result.code)}`;
         
-        // Mark code as generated in localStorage
+        // Mark code as generated and set cooldown
         localStorage.setItem('codeGenerated', 'true');
         localStorage.setItem('generatedCode', generatedCode);
+        localStorage.setItem('lastGeneratedTime', Date.now().toString());
         
         // Show success state
-        showStatus('Code generated successfully!', 'success');
+        showStatus('Code generated successfully! Next code available in 5 hours.', 'success');
         
         button.innerHTML = '<i class="fas fa-check mr-2"></i> Generated!';
         button.classList.remove('bg-gradient-to-r', 'from-blue-600', 'to-indigo-600');
         button.classList.add('bg-gradient-to-r', 'from-green-500', 'to-green-600');
         
-        // Hide generate section after delay
+        // Hide generate section and show cooldown after delay
         setTimeout(() => {
           document.getElementById('generateSection').classList.add('hidden');
-        }, 2000);
+          document.getElementById('codeSection').classList.add('hidden');
+          showCooldownState(COOLDOWN_TIME);
+        }, 3000);
 
       } catch (error) {
         // Show error state
@@ -412,6 +523,13 @@
         button.classList.add('bg-gradient-to-r', 'from-blue-600', 'to-indigo-600');
         button.disabled = false;
       }
+    }
+
+    // Format time for display
+    function formatTime(milliseconds) {
+      const hours = Math.floor(milliseconds / (1000 * 60 * 60));
+      const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60));
+      return `${hours}h ${minutes}m`;
     }
 
     // Copy code to clipboard
