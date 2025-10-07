@@ -263,23 +263,15 @@
       
       // Check if user is returning from ad verification
       if (urlParams.has('ads_verified') && !hasCodeGenerated) {
-        // Verify this is a legitimate redirect (not direct URL access)
-        if (document.referrer && document.referrer.includes('https://earn4link.in')) {
-          adVerified = true;
-          localStorage.setItem('adsVerified', 'true');
-          document.getElementById('initialState').classList.add('hidden');
-          document.getElementById('generateSection').classList.remove('hidden');
-          
-          // Clean URL
-          window.history.replaceState({}, document.title, window.location.pathname);
-        } else {
-          // Direct URL access detected - show error
-          showStatus('Direct URL access not allowed. Please complete ad verification properly.', 'error');
-          document.getElementById('verifyBtn').classList.add('shake');
-          setTimeout(() => {
-            document.getElementById('verifyBtn').classList.remove('shake');
-          }, 500);
-        }
+        // Set ad verification as complete
+        adVerified = true;
+        localStorage.setItem('adsVerified', 'true');
+        document.getElementById('initialState').classList.add('hidden');
+        document.getElementById('generateSection').classList.remove('hidden');
+        
+        // Clean URL - remove the ads_verified parameter
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
       } else if (localStorage.getItem('adsVerified') === 'true' && !hasCodeGenerated) {
         // User has previously verified ads
         adVerified = true;
